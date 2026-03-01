@@ -1,0 +1,7 @@
+{
+  "clangd.arguments": [
+    "--compile-commands-dir=build",
+    "--query-driver=C:/Users/Vicky/AppData/Roaming/Espressif/tools/xtensa-esp-elf/**/bin/xtensa-esp32-elf-*.exe",
+    "--log=verbose"
+  ]
+}
