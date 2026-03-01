@@ -4,7 +4,6 @@
 #include <string.h>
 #include <strings.h>
 
-
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -29,10 +28,6 @@ struct RootHeader {
     uint8_t version;
     uint8_t action;
     uint16_t flags;
-};
-
-struct ColorState {
-    uint16_t r_ne, g_ne, b_ne;
 };
 
 void led_server_task(void* arg) {
@@ -64,9 +59,6 @@ void led_server_task(void* arg) {
 
 #define ERROR_THRESHOLD 5
     int error_count = 0;
-
-    struct ColorState color_state;
-    bzero(&color_state, sizeof(color_state));
     uint8_t power = false;
 
     for (;;) {
@@ -121,11 +113,14 @@ void led_server_task(void* arg) {
                 break;
             }
 
-            memcpy(&color_state, payload_ptr, sizeof(color_state));
+            uint16_t values[3];
+            memcpy(&values, payload_ptr, sizeof(values));
+            const struct LEDState ls = {ntohs(values[0]), ntohs(values[1]), ntohs(values[2])};
 
-            if (power)
-                update_led(ntohs(color_state.r_ne), ntohs(color_state.g_ne),
-                           ntohs(color_state.b_ne));
+            if (power) {
+                led_update_rgb(&ls);
+                led_commit();
+            }
         } break;
 
         case POWER: {
@@ -135,17 +130,25 @@ void led_server_task(void* arg) {
             }
 
             power = payload_ptr[0];
-            if (power)
-                update_led(ntohs(color_state.r_ne), ntohs(color_state.g_ne),
-                           ntohs(color_state.b_ne));
-            else
-                update_led(0, 0, 0);
+            if (power) {
+                // TODO: Power ON relay
+            } else {
+                // TODO: Power OFF relay
+                // by now set rgb to 0,0,0
+                const struct LEDState ls = {0, 0, 0};
+                led_update_rgb(&ls);
+                led_commit();
+            }
         } break;
 
         case STATUS: {
             uint8_t response[15]; // header (8) + color state (6) + power (1)
+
+            const struct LEDState ls = led_state();
+            uint16_t values_ne[3] = {htons(ls.r), htons(ls.g), htons(ls.b)};
+
             memcpy(response, header, 8);
-            memcpy(response + 8, &color_state, 6);
+            memcpy(response + 8, &values_ne, 6);
             memcpy(response + 14, &power, 1);
 
             sendto(listen_fd, response, sizeof(response), 0,

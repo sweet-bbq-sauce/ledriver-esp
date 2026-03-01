@@ -19,7 +19,7 @@ void app_main(void) {
         result = nvs_flash_init();
     }
     ESP_ERROR_CHECK(result);
-    init_led();
+    led_init();
 
     connect_to_wifi("Mayorka", "Symcia160");
 
