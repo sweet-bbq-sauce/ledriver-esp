@@ -1,9 +1,11 @@
 #include <stdint.h>
+#include <strings.h>
+
+#include <freertos/portmacro.h>
 
 #include <driver/ledc.h>
 #include <esp_err.h>
 #include <esp_log.h>
-#include <strings.h>
 
 #include "led.h"
 
@@ -21,6 +23,7 @@
 #define CH_B LEDC_CHANNEL_2
 
 static struct LEDState current_state;
+static portMUX_TYPE cs_mux = portMUX_INITIALIZER_UNLOCKED;
 
 void led_init(void) {
     const ledc_timer_config_t t = {.speed_mode = MODE,
@@ -48,19 +51,38 @@ void led_init(void) {
     c.gpio_num = GPIO_BLUE;
     ESP_ERROR_CHECK(ledc_channel_config(&c));
 
+    portENTER_CRITICAL(&cs_mux);
     bzero(&current_state, sizeof(current_state));
+    portEXIT_CRITICAL(&cs_mux);
     led_commit();
 }
 
-void led_update_r(uint16_t r) { current_state.r = r; }
+void led_update_r(uint16_t r) {
+    portENTER_CRITICAL(&cs_mux);
+    current_state.r = r;
+    portEXIT_CRITICAL(&cs_mux);
+}
 
-void led_update_g(uint16_t g) { current_state.g = g; }
+void led_update_g(uint16_t g) {
+    portENTER_CRITICAL(&cs_mux);
+    current_state.g = g;
+    portEXIT_CRITICAL(&cs_mux);
+}
 
-void led_update_b(uint16_t b) { current_state.b = b; }
+void led_update_b(uint16_t b) {
+    portENTER_CRITICAL(&cs_mux);
+    current_state.b = b;
+    portEXIT_CRITICAL(&cs_mux);
+}
 
-void led_update_rgb(const struct LEDState* state) { current_state = *state; }
+void led_update_rgb(const struct LEDState* state) {
+    portENTER_CRITICAL(&cs_mux);
+    current_state = *state;
+    portEXIT_CRITICAL(&cs_mux);
+}
 
 void led_commit(void) {
+    portENTER_CRITICAL(&cs_mux);
     ESP_ERROR_CHECK(ledc_set_duty(MODE, CH_R, current_state.r));
     ESP_ERROR_CHECK(ledc_update_duty(MODE, CH_R));
 
@@ -69,8 +91,12 @@ void led_commit(void) {
 
     ESP_ERROR_CHECK(ledc_set_duty(MODE, CH_B, current_state.b));
     ESP_ERROR_CHECK(ledc_update_duty(MODE, CH_B));
-
-    ESP_LOGI("chuj", "RGB: %d,%d,%d", current_state.r, current_state.g, current_state.b);
+    portEXIT_CRITICAL(&cs_mux);
 }
 
-struct LEDState led_state(void) { return current_state; }
+struct LEDState led_state(void) {
+    portENTER_CRITICAL(&cs_mux);
+    const struct LEDState cs_copy = current_state;
+    portEXIT_CRITICAL(&cs_mux);
+    return cs_copy;
+}
