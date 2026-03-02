@@ -11,6 +11,7 @@
 #include "wifi.h"
 
 extern void led_server_task(void* arg);
+extern void start_web_panel(void);
 
 void app_main(void) {
     esp_err_t result = nvs_flash_init();
@@ -24,4 +25,5 @@ void app_main(void) {
     connect_to_wifi("Mayorka", "Symcia160");
 
     xTaskCreate(led_server_task, "LED controller", 4096, NULL, 5, NULL);
+    start_web_panel();
 }

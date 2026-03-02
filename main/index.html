@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEDriver Panel</title>
+</head>
+
+<body>
+    <table>
+        <tr>
+            <td><label for="R">Red:</label></td>
+            <td><input type="range" id="R" min="0" max="65535" value="0"></td>
+        </tr>
+
+        <tr>
+            <td><label for="G">Green:</label></td>
+            <td><input type="range" id="G" min="0" max="65535" value="0"></td>
+        </tr>
+
+        <tr>
+            <td><label for="B">Blue:</label></td>
+            <td><input type="range" id="B" min="0" max="65535" value="0"></td>
+        </tr>
+    </table>
+
+    <script>
+        const sliderR = document.getElementById('R');
+        const sliderG = document.getElementById('G');
+        const sliderB = document.getElementById('B');
+
+        const sock = new WebSocket(`ws://${window.location.host}/ws`);
+        sock.binaryType = 'arraybuffer';
+
+        const update = () => {
+            const buf = new ArrayBuffer(6);
+            const dv = new DataView(buf);
+
+            dv.setUint16(0, Number(sliderR.value), false);
+            dv.setUint16(2, Number(sliderG.value), false);
+            dv.setUint16(4, Number(sliderB.value), false);
+
+            sock.send(buf);
+        }
+
+        sock.onopen = () => {
+            sliderR.oninput = update;
+            sliderG.oninput = update;
+            sliderB.oninput = update;
+        }
+    </script>
+</body>
+
+</html>
